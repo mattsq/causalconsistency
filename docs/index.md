@@ -18,5 +18,34 @@ The network is composed of a shared `Backbone` and three heads:
 
 These modules can be swapped or extended through the configuration system.
 
-## Training loop
-`train.py` runs a semi-supervised training loop that mixes supervised losses with an unsupervised term for rows missing `Y`. Parameters are updated with gradient descent and each run saves its checkpoint together with the YAML config for full reproducibility.
+## Data generation
+Synthetic datasets following the $X \to Y \to Z$ structure can be generated with
+`examples/scripts/generate_synth.py`. The script outputs a small CSV file that is
+used throughout the examples and tests.
+
+## Training workflow
+`train.py` launches a semi-supervised training loop that mixes supervised losses
+with an unsupervised term for rows missing `Y`. A run is configured via a YAML
+file and optional CLI overrides:
+
+```bash
+python src/train.py --config examples/scripts/train_config.yaml --model-hidden-dim 16
+```
+
+Each run stores its checkpoint alongside the resolved configuration for full
+reproducibility.
+
+## Configuration reference
+The configuration is split into three dataclasses:
+
+- **ModelConfig** – `hidden_dim`, `num_layers`.
+- **LossWeights** – `z_yx`, `y_xz`, `x_yz`, `unsup`.
+- **TrainingConfig** – `batch_size`, `epochs`, `learning_rate`, `device`.
+
+Fields may be overridden on the command line using flags such as
+`--model-hidden-dim` or via environment variables like `MODEL__NUM_LAYERS=4`.
+
+## Evaluation
+After training, run `src/eval.py` to compute metrics on the saved checkpoint.
+The current implementation simply prints a placeholder message but forms the
+entry point for future evaluation utilities.
