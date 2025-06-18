@@ -1,6 +1,13 @@
 # Documentation
 
-This project implements the causal-consistency neural network described in `Prompt.txt`. The codebase now exposes a YAML-based configuration system and a modular set of model components.
+This project implements the causal-consistency neural network described in
+`Prompt.txt`. The documentation is organised into several sections covering
+training, evaluation and configuration. The API reference is generated
+automatically via MkDocs.
+
+For a guided introduction see
+the [training guide](training.md), the [metrics documentation](metrics.md) and
+the [configuration reference](configuration.md).
 
 ## Configuration system
 Configuration files live in the `configs/` directory and are parsed with `pydantic` dataclasses. All hyperparameters, such as backbone size or loss weights, can be changed in the YAML file or overridden via CLI flags:

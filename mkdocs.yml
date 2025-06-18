@@ -1,0 +1,14 @@
+site_name: Causal Consistency NN
+nav:
+  - Home: docs/index.md
+  - Training: docs/training.md
+  - Evaluation Metrics: docs/metrics.md
+  - Configuration: docs/configuration.md
+  - API Reference: docs/api.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          setup_commands:
+            - import sys; sys.path.append('src')
