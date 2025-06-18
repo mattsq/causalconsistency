@@ -10,6 +10,8 @@ from .heads import (
     ZgivenXYConfig,
 )
 from .semi_loop import EMConfig, train_em
+from .pyro_model import PyroConsistencyModel
+from .pyro_svi import SVIConfig, train_svi
 
 __all__ = [
     "Backbone",
@@ -22,4 +24,7 @@ __all__ = [
     "XgivenYZConfig",
     "EMConfig",
     "train_em",
+    "PyroConsistencyModel",
+    "SVIConfig",
+    "train_svi",
 ]

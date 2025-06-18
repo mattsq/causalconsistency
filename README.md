@@ -6,7 +6,8 @@ This repository provides an implementation of the causal-consistency neural netw
 
 ```bash
 poetry install  # installs torch, pyro, pydantic and pydantic-settings
-poetry run python src/train.py
+poetry run python src/train.py        # plain PyTorch EM loop
+poetry run python src/train.py --use-pyro  # train with Pyro SVI
 ```
 
 If you prefer using `pip` directly, install the dependencies first:
