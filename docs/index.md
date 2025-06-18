@@ -62,3 +62,18 @@ calculations.
 `serve.py` provides a minimal API for inference with a trained model. Functions
 `predict_z`, `counterfactual_z` and `impute_y` wrap the network's heads for
 easy integration in production services.
+
+## Docker workflow
+Both CPU and CUDA images can be built from the provided `Dockerfile`. Use
+`docker compose` to orchestrate common tasks:
+
+```bash
+docker compose build
+# Train using the current configuration
+docker compose run train
+
+# Launch the inference server
+docker compose run --service-ports serve
+```
+
+Set `DEVICE=cuda` when building if GPUs are available.
