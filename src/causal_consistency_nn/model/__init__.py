@@ -1,14 +1,27 @@
-"""Model components."""
+"""Model components for causal-consistency networks."""
 
-from .backbone import build_backbone
-from .heads import x_given_yz, y_given_xz, z_given_xy
+from .backbone import Backbone, BackboneConfig
+from .causal_model import CausalModel
+from .heads import (
+    XgivenYZ,
+    XgivenYZConfig,
+    YgivenXZ,
+    YgivenXZConfig,
+    ZgivenXY,
+    ZgivenXYConfig,
+)
 from .semi_loop import EMConfig, train_em
 
 __all__ = [
-    "build_backbone",
-    "x_given_yz",
-    "y_given_xz",
-    "z_given_xy",
+    "Backbone",
+    "BackboneConfig",
+    "CausalModel",
+    "XgivenYZ",
+    "XgivenYZConfig",
+    "YgivenXZ",
+    "YgivenXZConfig",
+    "ZgivenXY",
+    "ZgivenXYConfig",
     "EMConfig",
     "train_em",
 ]
