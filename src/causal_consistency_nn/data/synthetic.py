@@ -46,7 +46,10 @@ def get_synth_dataloaders(
     unsup_ds = TensorDataset(x[~mask], z[~mask])
 
     sup_loader = DataLoader(sup_ds, batch_size=batch_size, shuffle=True)
-    unsup_loader = DataLoader(unsup_ds, batch_size=batch_size, shuffle=True)
+    if len(unsup_ds) > 0:
+        unsup_loader = DataLoader(unsup_ds, batch_size=batch_size, shuffle=True)
+    else:
+        unsup_loader = DataLoader(unsup_ds, batch_size=batch_size, shuffle=False)
     return sup_loader, unsup_loader
 
 
