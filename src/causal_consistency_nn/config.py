@@ -38,12 +38,22 @@ class TrainingConfig:
     device: str = "cpu"
 
 
+@dataclass
+class SyntheticDataConfig:
+    """Parameters controlling synthetic data generation."""
+
+    n_samples: int = 1000
+    noise_std: float = 0.1
+    missing_y_prob: float = 0.0
+
+
 class Settings(BaseSettings):
     """Global configuration loaded from environment variables or a YAML file."""
 
     model: ModelConfig = Field(default_factory=ModelConfig)
     loss: LossWeights = Field(default_factory=LossWeights)
     train: TrainingConfig = Field(default_factory=TrainingConfig)
+    data: SyntheticDataConfig = Field(default_factory=SyntheticDataConfig)
     config_path: str | None = None
 
     model_config = SettingsConfigDict(env_nested_delimiter="__")
@@ -59,6 +69,7 @@ class Settings(BaseSettings):
             "model": ModelConfig,
             "loss": LossWeights,
             "train": TrainingConfig,
+            "data": SyntheticDataConfig,
         }
         for section, dc in env_map.items():
             if section in data:
