@@ -46,6 +46,19 @@ Fields may be overridden on the command line using flags such as
 `--model-hidden-dim` or via environment variables like `MODEL__NUM_LAYERS=4`.
 
 ## Evaluation
-After training, run `src/eval.py` to compute metrics on the saved checkpoint.
-The current implementation simply prints a placeholder message but forms the
-entry point for future evaluation utilities.
+`eval.py` loads a saved model and reports causal metrics. The script currently
+computes the average treatment effect (ATE) by drawing counterfactual `Z`
+predictions for both treatment arms and compares them. It also returns the
+average log likelihood of observed `Z` values under the model.
+
+```bash
+python src/eval.py --config configs/train_synth.yaml --model-path run/model.pt
+```
+
+The `metrics.py` module exposes reusable helpers for ATE and log-likelihood
+calculations.
+
+## Serving
+`serve.py` provides a minimal API for inference with a trained model. Functions
+`predict_z`, `counterfactual_z` and `impute_y` wrap the network's heads for
+easy integration in production services.
