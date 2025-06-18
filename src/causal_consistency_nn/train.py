@@ -17,6 +17,8 @@ from .model import (
     Backbone,
     BackboneConfig,
     EMConfig,
+    PyroConsistencyModel,
+    SVIConfig,
     XgivenYZ,
     XgivenYZConfig,
     YgivenXZ,
@@ -24,6 +26,7 @@ from .model import (
     ZgivenXY,
     ZgivenXYConfig,
     train_em,
+    train_svi,
 )
 
 
@@ -68,18 +71,28 @@ def run_training(settings: Settings, out_dir: Path) -> None:
     y_dim = int(y_example.max().item()) + 1
     z_dim = z_example.shape[1]
 
-    model = ConsistencyModel(x_dim, y_dim, z_dim, settings.model)
-
-    em_cfg = EMConfig(
-        lambda1=settings.loss.z_yx,
-        lambda2=settings.loss.y_xz,
-        lambda3=settings.loss.x_yz,
-        beta=settings.loss.unsup,
-        lr=settings.train.learning_rate,
-        epochs=settings.train.epochs,
-    )
-
-    train_em(model, sup_loader, unsup_loader, em_cfg)
+    if settings.train.use_pyro:
+        model = PyroConsistencyModel(x_dim, y_dim, z_dim, settings.model)
+        svi_cfg = SVIConfig(
+            lambda1=settings.loss.z_yx,
+            lambda2=settings.loss.y_xz,
+            lambda3=settings.loss.x_yz,
+            beta=settings.loss.unsup,
+            lr=settings.train.learning_rate,
+            epochs=settings.train.epochs,
+        )
+        train_svi(model, sup_loader, unsup_loader, svi_cfg)
+    else:
+        model = ConsistencyModel(x_dim, y_dim, z_dim, settings.model)
+        em_cfg = EMConfig(
+            lambda1=settings.loss.z_yx,
+            lambda2=settings.loss.y_xz,
+            lambda3=settings.loss.x_yz,
+            beta=settings.loss.unsup,
+            lr=settings.train.learning_rate,
+            epochs=settings.train.epochs,
+        )
+        train_em(model, sup_loader, unsup_loader, em_cfg)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), out_dir / "model.pt")
@@ -97,6 +110,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--loss-y-xz", type=float)
     parser.add_argument("--loss-x-yz", type=float)
     parser.add_argument("--loss-unsup", type=float)
+    parser.add_argument("--use-pyro", action="store_true", help="Use Pyro SVI trainer")
     parser.add_argument("--out-dir", type=Path, default=Path("run"))
     args = parser.parse_args(argv)
 
@@ -105,7 +119,7 @@ def main(argv: list[str] | None = None) -> None:
         with Path(args.config).open("r") as handle:
             data = yaml.safe_load(handle) or {}
 
-    overrides: dict[str, dict[str, float | int]] = {}
+    overrides: dict[str, dict[str, float | int | bool]] = {}
     if args.model_hidden_dim is not None or args.model_num_layers is not None:
         overrides["model"] = {}
         if args.model_hidden_dim is not None:
@@ -128,6 +142,9 @@ def main(argv: list[str] | None = None) -> None:
             overrides["loss"]["x_yz"] = args.loss_x_yz
         if args.loss_unsup is not None:
             overrides["loss"]["unsup"] = args.loss_unsup
+
+    if args.use_pyro:
+        overrides.setdefault("train", {})["use_pyro"] = True
 
     merged: dict[str, object] = {**data}
     for key, value in overrides.items():

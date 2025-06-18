@@ -10,6 +10,13 @@ The simplest way to start training on the synthetic data generator is:
 python src/causal_consistency_nn/train.py --config examples/scripts/train_config.yaml
 ```
 
+To train using Pyro's stochastic variational inference instead of the plain
+PyTorch loop add the `--use-pyro` flag:
+
+```bash
+python src/causal_consistency_nn/train.py --config examples/scripts/train_config.yaml --use-pyro
+```
+
 The script reads the YAML file and constructs the `Settings` dataclass which groups
 all configuration sections. A run directory is created under the current working
 folder to store the checkpoint and the resolved configuration.
