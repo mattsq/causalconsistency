@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  train:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DEVICE: ${DEVICE:-cpu}
+    volumes:
+      - .:/app
+    command: python -m causal_consistency_nn.train --config examples/scripts/train_config.yaml
+  serve:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DEVICE: ${DEVICE:-cpu}
+    volumes:
+      - .:/app
+    command: python -m causal_consistency_nn.serve
+    ports:
+      - "8000:8000"
