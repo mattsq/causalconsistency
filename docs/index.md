@@ -62,3 +62,10 @@ calculations.
 `serve.py` provides a minimal API for inference with a trained model. Functions
 `predict_z`, `counterfactual_z` and `impute_y` wrap the network's heads for
 easy integration in production services.
+A lightweight FastAPI application is available in `fastapi_app.py`. Use
+`create_app(model)` in your own code or run the module directly to expose the
+three inference endpoints:
+
+```bash
+python -m causal_consistency_nn.fastapi_app --model-path run/model.pt --config examples/scripts/train_config.yaml
+```
