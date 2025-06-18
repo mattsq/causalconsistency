@@ -36,6 +36,7 @@ class TrainingConfig:
     epochs: int = 10
     learning_rate: float = 1e-3
     device: str = "cpu"
+    use_pyro: bool = False
 
 
 @dataclass
