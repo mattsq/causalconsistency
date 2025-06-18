@@ -70,6 +70,15 @@ calculations.
 `predict_z`, `counterfactual_z` and `impute_y` wrap the network's heads for
 easy integration in production services.
 
+A lightweight FastAPI application is available in `fastapi_app.py`. Use
+`create_app(model)` in your own code or run the module directly to expose the
+three inference endpoints:
+
+```bash
+python -m causal_consistency_nn.fastapi_app --model-path run/model.pt --config examples/scripts/train_config.yaml
+```
+=======
+
 ## Docker workflow
 Both CPU and CUDA images can be built from the provided `Dockerfile`. Use
 `docker compose` to orchestrate common tasks:
