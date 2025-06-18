@@ -1,0 +1,235 @@
+Below is a fully-scoped design brief for a causal-consistency, three-head neural network that models the joint distribution of pretreatment covariates X, (possibly multi-class) treatment Y, and post-treatment covariates Z.
+It is written so an autonomous coding agent (or a human team) can turn it directly into a production-quality repository.
+
+⸻
+
+1 Problem framing & motivation
+
+Component	Role in typical causal pipeline	Why model it here?
+X	Observed, pretreatment covariates; potential confounders	Needed to satisfy ignorability and to personalise effects.
+Y	Treatment assignment (categorical or scalar dose)	May be partially missing in operational data; must be imputed for semi-supervised learning.
+Z	Post-treatment measurements, mediators, or outcomes	Captures downstream impact; appears abundantly in logs even when Y is unrecorded.
+
+	1.	Semi-supervised data reality In many operational settings we have piles of (X,Z) but sporadic labels Y. Leveraging those extra rows reduces variance and de-biases “labeled-only” estimators.
+	2.	Causal-consistency Enforcing the three conditionals
+p_\theta(Z\mid Y,X),\quad
+p_\theta(Y\mid X,Z),\quad
+p_\theta(X\mid Y,Z)
+to agree implicitly constrains the joint
+p_\theta(X,Y,Z)=p(Z\mid Y,X)\,p(Y\mid X)\,p(X)
+and discourages the network from encoding spurious shortcuts that violate the arrow X\rightarrow Y\rightarrow Z.
+	3.	Counterfactual reasoning A good model of p(Z\mid Y,X) gives immediate access to average and conditional treatment effects through Monte-Carlo interventions
+\mathbb{E}[Z\mid \operatorname{do}(Y=y),X=x].
+
+⸻
+
+2 Theoretical grounding
+
+2.1 Graphical model
+
+X ─▶ Y ─▶ Z
+
+Assumptions (standard but explicit):
+	•	No unmeasured confounders: X d-separates any common causes of Y and Z.
+	•	Consistency & SUTVA: Each unit has a well-defined Z(y) for every y.
+	•	Positivity: Every y is feasible for every x observed.
+
+2.2 Factorisations used in training
+
+Conditional	Loss term	Notes
+p_\theta(Z\mid Y,X)	\mathcal{L}_{ZYX}	Main causal path; often parameterised as a Gaussian (for continuous Z) or Categorical
+p_\theta(Y\mid X,Z)	\mathcal{L}_{YXZ}	Enables pseudo-labelling; multi-class cross-entropy
+p_\theta(X\mid Y,Z)	\mathcal{L}_{XYZ}	Gives a “cycle” that discourages degenerate latent codes
+
+Under complete data the joint negative log-likelihood is
+\mathcal{L}{\text{sup}}
+= \lambda_1\,\mathcal{L}{ZYX}+\lambda_2\,\mathcal{L}{YXZ}+\lambda_3\,\mathcal{L}{XYZ}.
+
+2.3 Semi-supervised objective
+
+For rows missing Y:
+	1.	Soft EM variant
+\mathcal{L}{\text{unsup}}
+=\mathbb{E}{\hat p_\theta(Y\mid X,Z)}
+\bigl[
+\lambda_1\,\mathcal{L}{ZYX}+\lambda_3\,\mathcal{L}{XYZ}
+\bigr]
++\tau\,\mathcal{H}\bigl[p_\theta(Y\mid X,Z)\bigr]
+where \mathcal{H} is Shannon entropy and \tau ≥0 regularises over-confident guesses.
+	2.	Hard pseudo-label variant (arg-max) is a special case with zero entropy term.
+
+The total loss:
+\mathcal{L} = \mathcal{L}{\text{sup}} + \beta\,\mathcal{L}{\text{unsup}}.
+
+⸻
+
+3 Reference architecture (PyTorch)
+
+model/
+├── backbone.py        # shared encoder f(·)
+├── heads.py           # three conditional heads
+├── losses.py          # generic NLL + entropy routines
+├── semi_loop.py       # EM / pseudo-label training loop
+└── metrics.py         # log-likelihood, CE, calibration, ACE
+
+# backbone.py ----------------------------------------------
+class Backbone(nn.Module):
+    def __init__(self, in_dims, hidden=(256, 128), act="gelu", dropout=0.1):
+        super().__init__()
+        layers = []
+        dim = in_dims
+        for h in hidden:
+            layers += [nn.Linear(dim, h), _get_activation(act)(), nn.Dropout(dropout)]
+            dim = h
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x):                      # x ∈ ℝ^{B×in_dims}
+        return self.net(x)                     # h ∈ ℝ^{B×H}
+
+# heads.py --------------------------------------------------
+class ZgivenXY(nn.Module):
+    def __init__(self, h_dim, y_dim, z_dim):
+        super().__init__()
+        self.fc = nn.Linear(h_dim + y_dim, 2 * z_dim)  # mean & log σ
+    def forward(self, h, y_onehot):
+        out = self.fc(torch.cat([h, y_onehot], -1))
+        μ, logσ = out.chunk(2, -1)
+        return Normal(μ, logσ.exp())
+
+class YgivenXZ(nn.Module):
+    def __init__(self, h_dim, z_dim, y_dim):
+        super().__init__()
+        self.fc = nn.Linear(h_dim + z_dim, y_dim)
+    def forward(self, h, z):
+        return Categorical(logits=self.fc(torch.cat([h, z], -1)))
+
+class XgivenYZ(nn.Module):
+    def __init__(self, h_dim, y_dim, x_dim):
+        super().__init__()
+        self.fc = nn.Linear(h_dim + y_dim, 2 * x_dim)
+    ...
+
+Shared Backbone encodes whichever variables are observed in the conditioning set; each head receives the backbone output plus any remaining variables it needs.
+
+⸻
+
+4 Training loop outline
+
+for batch in loader:
+    x, y, z, mask_y = batch            # mask_y==1 where Y observed
+    h_x = backbone(x)
+
+    # ---------- supervised part ----------
+    if mask_y.any():
+        y_obs  = y[mask_y]
+        x_obs  = x[mask_y]
+        z_obs  = z[mask_y]
+        h_obs  = h_x[mask_y]
+
+        # p(Z|Y,X)
+        dist_z = head_ZYX(h_obs, onehot(y_obs))
+        loss_z = -dist_z.log_prob(z_obs).mean()
+
+        # p(Y|X,Z)
+        logits_y = head_YXZ(h_obs, z_obs)
+        loss_y   = F.cross_entropy(logits_y, y_obs)
+
+        # p(X|Y,Z)
+        dist_x = head_XYZ(h_obs, onehot(y_obs))
+        loss_x = -dist_x.log_prob(x_obs).mean()
+
+    # ---------- unsupervised part ----------
+    if (~mask_y).any():
+        x_uns = x[~mask_y]; z_uns = z[~mask_y]; h_uns = h_x[~mask_y]
+        q_y   = head_YXZ(h_uns, z_uns)          # Categorical
+
+        # Soft-EM
+        exp_loss_z = torch.sum(
+            q_y.probs.unsqueeze(-1) *
+            head_ZYX(h_uns.repeat_interleave(y_dim,0),
+                     eye[y_dim].repeat(h_uns.size(0),1,1)
+                    ).log_prob(z_uns.repeat_interleave(y_dim,0))
+            , dim=1
+        ).mean().neg()
+
+        ent_loss = (q_y.probs * torch.log(q_y.probs + 1e-12)).sum(-1).mean()
+
+    total = λ1*loss_z + λ2*loss_y + λ3*loss_x + β*exp_loss_z + τ*ent_loss
+    total.backward(); optimiser.step(); optimiser.zero_grad()
+
+Tip:  start with supervised-only pre-training for a few epochs so the Y-head is reasonably calibrated before feeding pseudo-labels to the other heads.
+
+⸻
+
+5 Repository scaffold
+
+causal_consistency_nn/
+├── pyproject.toml            # Poetry/PEP-621; pinned torch & pyro
+├── README.md                 # quick-start & theory recap
+├── CONTRIBUTING.md           # coding-style, DCO
+├── LICENSE                   # MIT or Apache-2.0
+├── docs/                     # MkDocs or Sphinx; auto-API
+├── src/
+│   ├── data/                 # dataloaders, synthetic sims
+│   ├── model/                # backbone.py, heads.py, losses.py
+│   ├── train.py              # Hydra config → Trainer
+│   ├── eval.py               # causal metrics, ablations
+│   └── utils/                # logging, metrics, seed utils
+├── tests/                    # pytest; shapes, gradients, log-prob sign
+├── examples/
+│   ├── notebook_intro.ipynb  # quick demo on synthetic data
+│   └── scripts/
+│        ├── generate_synth.py
+│        └── train_synth.sh
+└── .github/
+    ├── workflows/ci.yml      # lint, unit tests on 3.10–3.12, CPU+CUDA
+    └── CODEOWNERS
+
+Key implementation conventions
+	•	Typed dataclasses for config (e.g. @dataclass class HParams).
+	•	Hydra or pydantic-settings to alter architecture and loss weights via YAML/CLI.
+	•	Modular losses so research ⇒ prod only swaps weightings or adds new heads.
+	•	Torch Lightning (optional) to simplify checkpointing and early stopping.
+	•	Continuous integration:
+	•	black + ruff for style.
+	•	pytest with 90 % coverage gate.
+	•	on-push automatic publish of main to TestPyPI, tag to PyPI.
+	•	Dockerfile & docker-compose for GPU and CPU images with pinned versions.
+
+⸻
+
+6 Testing & validation checklist
+
+Layer	Unit test	Validation dataset
+Encoder & heads	forward pass shapes; log-prob < 0	✔ synthetic Gaussian mixture
+Semi-sup loop	loss decreases; EM monotonicity	✔ synthetic with masked Y
+Causal metrics	estimates ATE within CI	✔ SCM with known ground truth
+
+Add integration tests that simulate missing-Y pattern (e.g. MAR, MNAR) and confirm the semi-supervised variant beats the supervised baseline on held-out log-likelihood and ATE RMSE.
+
+⸻
+
+7 Deployment & inference
+	•	Saved objects: checkpoint (.pt), config (.yaml), environment file (conda-lock.yml).
+	•	Predict API (serve.py) exposes
+	•	predict_z(x, y)  → samples or mean of Z\mid X=x,Y=y
+	•	counterfactual_z(x, y')  → \hat Z(y’)
+	•	impute_y(x, z)  → posterior over Y.
+	•	Batch inference job using Torch-Serve or FastAPI.
+	•	Model cards (✍︎) record DAG, assumptions, fairness considerations, and robustness tests.
+
+⸻
+
+8 Road-map / future work
+	1.	Instrumental-variable extension: add an extra head W with arrows W→Y.
+	2.	Normalising-flow heads for richer continuous Z or X.
+	3.	Graph Neural Net backbone for structured X (e.g. relational data).
+	4.	Active learning: uncertainty-based query of rows where Y is most valuable to label.
+
+⸻
+
+TL;DR for an LLM code agent
+
+“Generate a PyTorch project called causal_consistency_nn following the scaffold above; implement backbone & three conditional heads; provide a semi-supervised EM trainer; include synthetic-data tests; wire in Hydra configs, CI, and CLI entry-points train.py and eval.py.”
+
+This specification contains every architectural, theoretical, and organisational detail needed for an autonomous agent (or human team) to spin up a working, production-ready repository.
