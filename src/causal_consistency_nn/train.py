@@ -1,19 +1,77 @@
-"""Training entry point."""
+"""Training entry point for causal-consistency models."""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
+import torch
 import yaml
 
 from .config import Settings
+from .data import SynthConfig, make_synthetic_loaders
+from .model import (
+    Backbone,
+    BackboneConfig,
+    CausalModel,
+    EMConfig,
+    XgivenYZ,
+    XgivenYZConfig,
+    YgivenXZ,
+    YgivenXZConfig,
+    ZgivenXY,
+    ZgivenXYConfig,
+    train_em,
+)
+
+
+def run_training(settings: Settings, output_dir: Path) -> CausalModel:
+    """Construct model, run EM training, and save artefacts."""
+    sup_loader, unsup_loader = make_synthetic_loaders(
+        SynthConfig(batch_size=settings.train.batch_size)
+    )
+
+    x_dim = 1
+    z_dim = 1
+    y_dim = 2
+    hidden = (settings.model.hidden_dim,) * settings.model.num_layers
+
+    backbone = Backbone(BackboneConfig(in_dims=x_dim, hidden=hidden))
+    head_z = ZgivenXY(
+        ZgivenXYConfig(h_dim=backbone.output_dim, y_dim=y_dim, z_dim=z_dim)
+    )
+    head_y = YgivenXZ(
+        YgivenXZConfig(h_dim=backbone.output_dim, z_dim=z_dim, y_dim=y_dim)
+    )
+    head_x = XgivenYZ(
+        XgivenYZConfig(h_dim=backbone.output_dim, y_dim=y_dim, x_dim=x_dim)
+    )
+
+    model = CausalModel(backbone, head_z, head_y, head_x, y_dim)
+
+    em_cfg = EMConfig(
+        lambda1=settings.loss.z_yx,
+        lambda2=settings.loss.y_xz,
+        lambda3=settings.loss.x_yz,
+        beta=settings.loss.unsup,
+        lr=settings.train.learning_rate,
+        epochs=settings.train.epochs,
+    )
+
+    train_em(model, sup_loader, unsup_loader, em_cfg)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), output_dir / "model.pt")
+    with (output_dir / "config.yaml").open("w") as handle:
+        yaml.safe_dump(settings.model_dump(), handle)
+    return model
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Parse configuration and launch training (placeholder)."""
+    """Parse configuration and launch training."""
     parser = argparse.ArgumentParser(description="Training script")
     parser.add_argument("--config", type=str, help="Path to YAML config file")
+    parser.add_argument("--output-dir", type=str, default="runs/default")
     parser.add_argument("--model-hidden-dim", type=int)
     parser.add_argument("--model-num-layers", type=int)
     parser.add_argument("--loss-z-yx", type=float)
@@ -61,7 +119,8 @@ def main(argv: list[str] | None = None) -> None:
     settings = Settings(**merged, config_path=args.config)
 
     print(f"Using config: {settings}")
-    print("Training placeholder")
+
+    run_training(settings, Path(args.output_dir))
 
 
 if __name__ == "__main__":
