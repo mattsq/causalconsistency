@@ -7,11 +7,88 @@ from pathlib import Path
 
 import yaml
 
-from .config import Settings
+import torch
+import torch.nn.functional as F
+from torch import nn
+
+from .config import ModelConfig, Settings
+from .data import get_synth_dataloaders
+from .model import (
+    Backbone,
+    BackboneConfig,
+    EMConfig,
+    XgivenYZ,
+    XgivenYZConfig,
+    YgivenXZ,
+    YgivenXZConfig,
+    ZgivenXY,
+    ZgivenXYConfig,
+    train_em,
+)
+
+
+class ConsistencyModel(nn.Module):
+    """Minimal model combining backbone and heads."""
+
+    def __init__(self, x_dim: int, y_dim: int, z_dim: int, cfg: ModelConfig) -> None:
+        super().__init__()
+        hidden = [cfg.hidden_dim] * cfg.num_layers
+        self.backbone = Backbone(BackboneConfig(in_dims=x_dim, hidden=hidden))
+        h_dim = self.backbone.output_dim
+        self.head_z = ZgivenXY(ZgivenXYConfig(h_dim=h_dim, y_dim=y_dim, z_dim=z_dim))
+        self.head_y = YgivenXZ(YgivenXZConfig(h_dim=h_dim, z_dim=z_dim, y_dim=y_dim))
+        self.head_x = XgivenYZ(XgivenYZConfig(h_dim=h_dim, y_dim=y_dim, x_dim=x_dim))
+        self.y_dim = y_dim
+
+    def _onehot(self, y: torch.Tensor) -> torch.Tensor:
+        return F.one_hot(y, num_classes=self.y_dim).float()
+
+    def head_z_given_xy(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        h = self.backbone(x)
+        return self.head_z(h, self._onehot(y)).mean
+
+    def head_y_given_xz(self, x: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        h = self.backbone(x)
+        return self.head_y(h, z).logits
+
+    def head_x_given_yz(self, y: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        h = self.backbone(z)
+        return self.head_x(h, self._onehot(y)).mean
+
+
+def run_training(settings: Settings, out_dir: Path) -> None:
+    """Train a model using the provided ``settings`` and save outputs."""
+
+    sup_loader, unsup_loader = get_synth_dataloaders(
+        settings.data, batch_size=settings.train.batch_size, seed=0
+    )
+
+    x_example, y_example, z_example = next(iter(sup_loader))
+    x_dim = x_example.shape[1]
+    y_dim = int(y_example.max().item()) + 1
+    z_dim = z_example.shape[1]
+
+    model = ConsistencyModel(x_dim, y_dim, z_dim, settings.model)
+
+    em_cfg = EMConfig(
+        lambda1=settings.loss.z_yx,
+        lambda2=settings.loss.y_xz,
+        lambda3=settings.loss.x_yz,
+        beta=settings.loss.unsup,
+        lr=settings.train.learning_rate,
+        epochs=settings.train.epochs,
+    )
+
+    train_em(model, sup_loader, unsup_loader, em_cfg)
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), out_dir / "model.pt")
+    with (out_dir / "config.yaml").open("w") as handle:
+        yaml.safe_dump(settings.model_dump(), handle)
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Parse configuration and launch training (placeholder)."""
+    """Parse configuration and launch training."""
     parser = argparse.ArgumentParser(description="Training script")
     parser.add_argument("--config", type=str, help="Path to YAML config file")
     parser.add_argument("--model-hidden-dim", type=int)
@@ -20,6 +97,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--loss-y-xz", type=float)
     parser.add_argument("--loss-x-yz", type=float)
     parser.add_argument("--loss-unsup", type=float)
+    parser.add_argument("--out-dir", type=Path, default=Path("run"))
     args = parser.parse_args(argv)
 
     data: dict[str, object] = {}
@@ -61,7 +139,8 @@ def main(argv: list[str] | None = None) -> None:
     settings = Settings(**merged, config_path=args.config)
 
     print(f"Using config: {settings}")
-    print("Training placeholder")
+
+    run_training(settings, args.out_dir)
 
 
 if __name__ == "__main__":
