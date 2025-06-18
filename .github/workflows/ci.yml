@@ -39,4 +39,7 @@ jobs:
         run: |
           pytest --cov=src --cov=tests --cov-report=term --cov-report=xml \
             --cov-fail-under=90 -s
+      - name: Build Docker image
+        run: |
+          docker build --build-arg DEVICE=${{ matrix.hardware }} -t causal-consistency:${{ matrix.hardware }} .
 

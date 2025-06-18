@@ -26,3 +26,29 @@ Use `pytest` together with `pytest-cov` to measure coverage locally. Coverage mu
 pip install -e . pytest pytest-cov
 pytest --cov=src --cov=tests --cov-report=term --cov-fail-under=90
 ```
+
+## Containerised workflow
+
+The project ships with a `Dockerfile` and `docker-compose.yml` to simplify
+training and serving. Build the CPU image and run a training job with:
+
+```bash
+docker compose build
+docker compose run train
+```
+
+To use a CUDA image set `DEVICE=cuda` before building:
+
+```bash
+DEVICE=cuda docker compose build
+DEVICE=cuda docker compose run train
+```
+
+A simple inference server can be launched with:
+
+```bash
+docker compose run --service-ports serve
+```
+
+The compose file mounts the repository in `/app` so outputs are written back to
+your local filesystem.
