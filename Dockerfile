@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y python3 python3-pip git \
 
 FROM ${DEVICE} AS final
 WORKDIR /app
-COPY pyproject.toml README.md LICENSE ./
+COPY pyproject.toml README.md LICENSE conda-lock.yml ./
 RUN pip install --no-cache-dir pip setuptools wheel
 RUN pip install --no-cache-dir .
 COPY src src
