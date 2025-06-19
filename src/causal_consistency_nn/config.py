@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 import os
@@ -14,38 +14,80 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class ModelConfig:
     """Architecture hyperparameters."""
 
-    hidden_dim: int = 64
-    num_layers: int = 2
+    hidden_dim: int = field(
+        default=64,
+        metadata={"help": "Number of features in each hidden layer of the heads."},
+    )
+    num_layers: int = field(
+        default=2,
+        metadata={"help": "Depth of the shared backbone in terms of hidden layers."},
+    )
 
 
 @dataclass
 class LossWeights:
     """Weighting of individual loss terms."""
 
-    z_yx: float = 1.0
-    y_xz: float = 1.0
-    x_yz: float = 1.0
-    unsup: float = 0.0
+    z_yx: float = field(
+        default=1.0,
+        metadata={"help": "Weight for predicting Z from X and Y."},
+    )
+    y_xz: float = field(
+        default=1.0,
+        metadata={"help": "Weight for predicting Y from X and Z."},
+    )
+    x_yz: float = field(
+        default=1.0,
+        metadata={"help": "Weight for reconstructing X from Y and Z."},
+    )
+    unsup: float = field(
+        default=0.0,
+        metadata={"help": "Multiplier on the unsupervised objective."},
+    )
 
 
 @dataclass
 class TrainingConfig:
     """General training parameters."""
 
-    batch_size: int = 32
-    epochs: int = 10
-    learning_rate: float = 1e-3
-    device: str = "cpu"
-    use_pyro: bool = False
+    batch_size: int = field(
+        default=32,
+        metadata={"help": "Number of samples per optimisation step."},
+    )
+    epochs: int = field(
+        default=10,
+        metadata={"help": "Total training epochs to run."},
+    )
+    learning_rate: float = field(
+        default=1e-3,
+        metadata={"help": "Initial learning rate for the optimiser."},
+    )
+    device: str = field(
+        default="cpu",
+        metadata={"help": "Torch device identifier such as 'cpu' or 'cuda'."},
+    )
+    use_pyro: bool = field(
+        default=False,
+        metadata={"help": "Enable Pyro-based layers for probabilistic training."},
+    )
 
 
 @dataclass
 class SyntheticDataConfig:
     """Parameters controlling synthetic data generation."""
 
-    n_samples: int = 1000
-    noise_std: float = 0.1
-    missing_y_prob: float = 0.0
+    n_samples: int = field(
+        default=1000,
+        metadata={"help": "Number of examples to generate in the toy dataset."},
+    )
+    noise_std: float = field(
+        default=0.1,
+        metadata={"help": "Standard deviation of Gaussian noise added to Z."},
+    )
+    missing_y_prob: float = field(
+        default=0.0,
+        metadata={"help": "Probability that Y is masked during training."},
+    )
 
 
 class Settings(BaseSettings):
