@@ -13,7 +13,7 @@ the [configuration reference](configuration.md).
 Configuration files live in the `configs/` directory and are parsed with `pydantic` dataclasses. All hyperparameters, such as backbone size or loss weights, can be changed in the YAML file or overridden via CLI flags:
 
 ```bash
-python src/train.py --config configs/train_synth.yaml optimizer.lr=1e-3
+python src/train.py --config examples/scripts/train_config.yaml optimizer.lr=1e-3
 ```
 
 ## Model components
@@ -59,7 +59,7 @@ predictions for both treatment arms and compares them. It also returns the
 average log likelihood of observed `Z` values under the model.
 
 ```bash
-python src/eval.py --config configs/train_synth.yaml --model-path run/model.pt
+python src/eval.py --config examples/scripts/train_config.yaml --model-path run/model.pt
 ```
 
 The `metrics.py` module exposes reusable helpers for ATE and log-likelihood
