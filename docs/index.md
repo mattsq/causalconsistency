@@ -42,6 +42,11 @@ file and optional CLI overrides:
 python src/train.py --config examples/scripts/train_config.yaml --model-hidden-dim 16
 ```
 
+The script can also integrate with **Pyro** or **PyTorch Lightning**. Passing
+`--use-pyro` enables Pyro's stochastic variational inference while
+`--use-lightning` runs the loop through Lightning's `Trainer`. See the
+[training guide](training.md) for details.
+
 Each run stores its checkpoint alongside the resolved configuration for full
 reproducibility.
 
