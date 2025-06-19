@@ -18,6 +18,7 @@ pip install -e .
 ```
 
 The model enforces the factorisation $X \to Y \to Z$ by sharing a backbone encoder and three output heads. See the documentation in `docs/` for details.
+For an overview of the causal assumptions, fairness considerations and robustness tests see the [model card](docs/model_card.md).
 
 ## Running tests
 
