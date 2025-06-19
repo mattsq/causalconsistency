@@ -97,3 +97,10 @@ def test_entropy_term() -> None:
     entropy = -(torch.tensor([0.5, 0.5]) * torch.log(torch.tensor([0.5, 0.5]))).sum()
     expected = -cfg.tau * entropy
     assert torch.isclose(loss, expected, atol=1e-4)
+
+
+def test_train_em_accepts_device() -> None:
+    sup_loader, unsup_loader = create_data()
+    model = DummyModel()
+    train_em(model, sup_loader, unsup_loader, EMConfig(epochs=1), device="cpu")
+    assert all(p.device.type == "cpu" for p in model.parameters())

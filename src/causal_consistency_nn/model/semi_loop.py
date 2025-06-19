@@ -106,10 +106,14 @@ def train_em(
     supervised_loader: Iterable[Tuple[torch.Tensor, ...]],
     unsupervised_loader: Optional[Iterable[Tuple[torch.Tensor, ...]]],
     config: Optional[EMConfig] = None,
+    device: torch.device | str = "cpu",
 ) -> None:
     """Train ``model`` using a simple EM loop."""
     if config is None:
         config = EMConfig()
+
+    torch_device = torch.device(device)
+    model.to(torch_device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
     mse = nn.MSELoss()
@@ -119,6 +123,7 @@ def train_em(
         sup_total = 0.0
         sup_batches = 0
         for batch in supervised_loader:
+            batch = tuple(t.to(torch_device) for t in batch)
             optimizer.zero_grad()
             loss = _supervised_step(model, batch, config, mse, ce)
             loss.backward()
@@ -130,6 +135,7 @@ def train_em(
         unsup_batches = 0
         if unsupervised_loader is not None and epoch >= config.pretrain_epochs:
             for batch in unsupervised_loader:
+                batch = tuple(t.to(torch_device) for t in batch)
                 optimizer.zero_grad()
                 loss = _unsupervised_step(model, batch, config, mse)
                 loss.backward()

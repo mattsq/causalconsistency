@@ -10,6 +10,15 @@ The simplest way to start training on the synthetic data generator is:
 python src/causal_consistency_nn/train.py --config examples/scripts/train_config.yaml
 ```
 
+To run on a GPU specify the device on the command line or via an environment
+variable:
+
+```bash
+python src/causal_consistency_nn/train.py --config examples/scripts/train_config.yaml --device cuda
+# or
+TRAIN__DEVICE=cuda python src/causal_consistency_nn/train.py --config examples/scripts/train_config.yaml
+```
+
 To train using Pyro's stochastic variational inference instead of the plain
 PyTorch loop add the `--use-pyro` flag:
 

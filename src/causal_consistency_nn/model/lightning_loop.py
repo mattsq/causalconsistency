@@ -61,18 +61,25 @@ def train_lightning(
     supervised_loader: Iterable[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
     unsupervised_loader: Optional[Iterable[Tuple[torch.Tensor, torch.Tensor]]] = None,
     config: Optional[LightningConfig] = None,
+    device: torch.device | str = "cpu",
 ) -> None:
     """Train ``model`` using PyTorch Lightning."""
     cfg = config or LightningConfig()
+    torch_device = torch.device(device)
+    model.to(torch_device)
+
     module = LightningConsistencyModule(
         model, supervised_loader, unsupervised_loader, cfg
     )
+    accelerator = "gpu" if torch_device.type == "cuda" else "cpu"
     trainer = pl.Trainer(
         max_epochs=cfg.epochs,
         logger=False,
         enable_checkpointing=False,
         enable_progress_bar=False,
         enable_model_summary=False,
+        accelerator=accelerator,
+        devices=1,
     )
     trainer.fit(module)
 
