@@ -37,6 +37,7 @@ class TrainingConfig:
     learning_rate: float = 1e-3
     device: str = "cpu"
     use_pyro: bool = False
+    use_lightning: bool = False
 
 
 @dataclass

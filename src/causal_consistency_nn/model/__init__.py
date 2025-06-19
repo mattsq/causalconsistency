@@ -12,6 +12,7 @@ from .heads import (
 from .semi_loop import EMConfig, train_em
 from .pyro_model import PyroConsistencyModel
 from .pyro_svi import SVIConfig, train_svi
+from .lightning_loop import LightningConfig, LightningConsistencyModule, train_lightning
 
 __all__ = [
     "Backbone",
@@ -27,4 +28,7 @@ __all__ = [
     "PyroConsistencyModel",
     "SVIConfig",
     "train_svi",
+    "LightningConfig",
+    "LightningConsistencyModule",
+    "train_lightning",
 ]

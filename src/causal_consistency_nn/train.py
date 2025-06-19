@@ -28,6 +28,7 @@ from .model import (
     ZgivenXYConfig,
     train_em,
     train_svi,
+    train_lightning,
 )
 
 
@@ -83,6 +84,17 @@ def run_training(settings: Settings, out_dir: Path) -> None:
             epochs=settings.train.epochs,
         )
         train_svi(model, sup_loader, unsup_loader, svi_cfg)
+    elif settings.train.use_lightning:
+        model = ConsistencyModel(x_dim, y_dim, z_dim, settings.model)
+        em_cfg = EMConfig(
+            lambda1=settings.loss.z_yx,
+            lambda2=settings.loss.y_xz,
+            lambda3=settings.loss.x_yz,
+            beta=settings.loss.unsup,
+            lr=settings.train.learning_rate,
+            epochs=settings.train.epochs,
+        )
+        train_lightning(model, sup_loader, unsup_loader, em_cfg)
     else:
         model = ConsistencyModel(x_dim, y_dim, z_dim, settings.model)
         em_cfg = EMConfig(
@@ -118,6 +130,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--loss-x-yz", type=float)
     parser.add_argument("--loss-unsup", type=float)
     parser.add_argument("--use-pyro", action="store_true", help="Use Pyro SVI trainer")
+    parser.add_argument(
+        "--use-lightning", action="store_true", help="Use PyTorch Lightning trainer"
+    )
     parser.add_argument("--out-dir", type=Path, default=Path("run"))
     args = parser.parse_args(argv)
 
@@ -152,6 +167,8 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.use_pyro:
         overrides.setdefault("train", {})["use_pyro"] = True
+    if args.use_lightning:
+        overrides.setdefault("train", {})["use_lightning"] = True
 
     merged: dict[str, object] = {**data}
     for key, value in overrides.items():
