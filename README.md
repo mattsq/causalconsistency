@@ -10,6 +10,9 @@ poetry run python src/train.py        # plain PyTorch EM loop
 poetry run python src/train.py --use-pyro  # train with Pyro SVI
 ```
 
+Training settings are defined under the `train:` section of
+`examples/scripts/train_config.yaml`.
+
 If you prefer using `pip` directly, install the dependencies first:
 
 ```bash
