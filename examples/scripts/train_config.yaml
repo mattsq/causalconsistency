@@ -1,5 +1,5 @@
 # Example configuration for training on synthetic data
 model:
   hidden_dim: 32
-training:
+train:
   epochs: 10
