@@ -90,6 +90,8 @@ def run_training(settings: Settings, out_dir: Path) -> None:
     y_dim = int(y_example.max().item()) + 1
     z_dim = z_example.shape[1]
 
+    device = torch.device(settings.train.device)
+
     if settings.train.use_pyro:
         model = PyroConsistencyModel(x_dim, y_dim, z_dim, settings.model)
         svi_cfg = SVIConfig(
@@ -101,7 +103,7 @@ def run_training(settings: Settings, out_dir: Path) -> None:
             lr=settings.train.learning_rate,
             epochs=settings.train.epochs,
         )
-        train_svi(model, sup_loader, unsup_loader, svi_cfg)
+        train_svi(model, sup_loader, unsup_loader, svi_cfg, device=device)
     elif settings.train.use_lightning:
         if train_lightning is None:
             raise ImportError("pytorch_lightning is not installed")
@@ -114,7 +116,7 @@ def run_training(settings: Settings, out_dir: Path) -> None:
             lr=settings.train.learning_rate,
             epochs=settings.train.epochs,
         )
-        train_lightning(model, sup_loader, unsup_loader, em_cfg)
+        train_lightning(model, sup_loader, unsup_loader, em_cfg, device=device)
     else:
         model = ConsistencyModel(x_dim, y_dim, z_dim, settings.model)
         em_cfg = EMConfig(
@@ -126,7 +128,7 @@ def run_training(settings: Settings, out_dir: Path) -> None:
             lr=settings.train.learning_rate,
             epochs=settings.train.epochs,
         )
-        train_em(model, sup_loader, unsup_loader, em_cfg)
+        train_em(model, sup_loader, unsup_loader, em_cfg, device=device)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), out_dir / "model.pt")
@@ -154,6 +156,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--use-lightning", action="store_true", help="Use PyTorch Lightning trainer"
     )
+    parser.add_argument("--device", type=str, help="Training device e.g. cpu or cuda")
     parser.add_argument("--out-dir", type=Path, default=Path("run"))
     args = parser.parse_args(argv)
 
@@ -190,6 +193,8 @@ def main(argv: list[str] | None = None) -> None:
         overrides.setdefault("train", {})["use_pyro"] = True
     if args.use_lightning:
         overrides.setdefault("train", {})["use_lightning"] = True
+    if args.device is not None:
+        overrides.setdefault("train", {})["device"] = args.device
 
     merged: dict[str, object] = {**data}
     for key, value in overrides.items():

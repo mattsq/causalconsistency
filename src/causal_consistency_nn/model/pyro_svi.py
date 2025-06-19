@@ -91,10 +91,14 @@ def train_svi(
     supervised_loader: Iterable[Tuple[torch.Tensor, ...]],
     unsupervised_loader: Optional[Iterable[Tuple[torch.Tensor, ...]]],
     config: Optional[SVIConfig] = None,
+    device: torch.device | str = "cpu",
 ) -> None:
     """Train ``model`` using Pyro SVI."""
     if config is None:
         config = SVIConfig()
+
+    torch_device = torch.device(device)
+    model.to(torch_device)
 
     pyro.clear_param_store()
     optim = Adam({"lr": config.lr})
@@ -115,7 +119,9 @@ def train_svi(
 
     for epoch in range(config.epochs):
         for batch in supervised_loader:
+            batch = tuple(t.to(torch_device) for t in batch)
             svi_sup.step(batch)
         if unsupervised_loader is not None and epoch >= config.pretrain_epochs:
             for batch in unsupervised_loader:
+                batch = tuple(t.to(torch_device) for t in batch)
                 svi_unsup.step(batch)

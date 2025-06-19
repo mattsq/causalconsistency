@@ -46,3 +46,20 @@ def test_pyro_svi_end_to_end(tmp_path: Path) -> None:
     train.run_training(settings, out_dir)
     assert (out_dir / "model.pt").exists()
     assert (out_dir / "config.yaml").exists()
+
+
+def test_svi_accepts_device() -> None:
+    settings = Settings()
+    sup_loader, unsup_loader = get_synth_dataloaders(
+        settings.data, batch_size=settings.train.batch_size, seed=0
+    )
+
+    x_ex, y_ex, z_ex = next(iter(sup_loader))
+    model = train.PyroConsistencyModel(
+        x_ex.shape[1], int(y_ex.max().item()) + 1, z_ex.shape[1], settings.model
+    )
+
+    train.train_svi(
+        model, sup_loader, unsup_loader, train.SVIConfig(epochs=1), device="cpu"
+    )
+    assert all(p.device.type == "cpu" for p in model.parameters())
