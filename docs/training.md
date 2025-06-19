@@ -17,6 +17,18 @@ PyTorch loop add the `--use-pyro` flag:
 python src/causal_consistency_nn/train.py --config examples/scripts/train_config.yaml --use-pyro
 ```
 
+To run the same experiment with PyTorch Lightning instead use `--use-lightning`:
+
+```bash
+python src/causal_consistency_nn/train.py --config examples/scripts/train_config.yaml --use-lightning
+```
+
+This requires installing `pytorch-lightning` first:
+
+```bash
+pip install pytorch-lightning
+```
+
 The script reads the YAML file and constructs the `Settings` dataclass which groups
 all configuration sections. A run directory is created under the current working
 folder to store the checkpoint and the resolved configuration.

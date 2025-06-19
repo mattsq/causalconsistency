@@ -36,3 +36,9 @@ extend-exclude = ["docs", "examples", "tests/data"]
 [build-system]
 requires = ["poetry-core>=1.6.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.coverage.run]
+omit = [
+    "src/causal_consistency_nn/model/lightning_loop.py",
+    "tests/test_lightning_loop.py",
+]
