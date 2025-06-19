@@ -46,6 +46,7 @@ class SyntheticDataConfig:
     n_samples: int = 1000
     noise_std: float = 0.1
     missing_y_prob: float = 0.0
+    num_classes: int = 2
 
 
 class Settings(BaseSettings):
