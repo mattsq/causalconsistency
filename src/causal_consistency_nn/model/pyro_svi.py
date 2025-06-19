@@ -5,6 +5,7 @@ from typing import Iterable, Optional, Tuple
 
 import pyro
 from pyro.infer import SVI, Trace_ELBO
+from pyro.infer.autoguide import AutoNormal
 from pyro.optim import Adam
 import torch
 from torch import nn
@@ -34,14 +35,6 @@ def _model_supervised(
         x_dist = model.head_x(model.backbone(z), model._onehot(y))
         with pyro.poutine.scale(scale=cfg.lambda3):
             pyro.sample("x", x_dist.to_event(1), obs=x)
-
-
-def _guide_supervised(
-    model: nn.Module,
-    batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
-    cfg: SVIConfig,
-) -> None:
-    pass
 
 
 def _model_unsupervised(
@@ -81,9 +74,11 @@ def train_svi(
 
     pyro.clear_param_store()
     optim = Adam({"lr": config.lr})
+
+    guide_sup = AutoNormal(lambda batch: _model_supervised(model, batch, config))
     svi_sup = SVI(
         lambda batch: _model_supervised(model, batch, config),
-        lambda batch: _guide_supervised(model, batch, config),
+        guide_sup,
         optim,
         loss=Trace_ELBO(),
     )
