@@ -31,3 +31,15 @@ def test_settings_env_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setenv("MODEL__NUM_LAYERS", "4")
     s = Settings.from_yaml(cfg)
     assert s.model.num_layers == 4
+
+
+def test_example_config_loads() -> None:
+    cfg = (
+        Path(__file__).resolve().parents[1]
+        / "examples"
+        / "scripts"
+        / "train_config.yaml"
+    )
+    s = Settings.from_yaml(cfg)
+    assert s.train.epochs == 10
+    assert s.model.hidden_dim == 32
