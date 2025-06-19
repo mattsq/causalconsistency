@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable, Optional, Tuple, Sequence
 
 import pytorch_lightning as pl
@@ -13,6 +14,9 @@ from .semi_loop import EMConfig, _supervised_step, _unsupervised_step
 @dataclass
 class LightningConfig(EMConfig):
     """Configuration for Lightning training."""
+
+    checkpoint_dir: Optional[Path] = None
+    early_stopping_patience: Optional[int] = None
 
 
 class LightningConsistencyModule(pl.LightningModule):
@@ -67,10 +71,26 @@ def train_lightning(
     module = LightningConsistencyModule(
         model, supervised_loader, unsupervised_loader, cfg
     )
+    callbacks = []
+    if cfg.early_stopping_patience is not None:
+        callbacks.append(
+            pl.callbacks.EarlyStopping(
+                monitor="supervised_loss_epoch", patience=cfg.early_stopping_patience
+            )
+        )
+    if cfg.checkpoint_dir is not None:
+        callbacks.append(
+            pl.callbacks.ModelCheckpoint(
+                dirpath=str(cfg.checkpoint_dir),
+                save_top_k=1,
+                monitor="supervised_loss_epoch",
+            )
+        )
     trainer = pl.Trainer(
         max_epochs=cfg.epochs,
         logger=False,
-        enable_checkpointing=False,
+        enable_checkpointing=cfg.checkpoint_dir is not None,
+        callbacks=callbacks,
         enable_progress_bar=False,
         enable_model_summary=False,
     )
