@@ -83,3 +83,14 @@ docker compose run --service-ports serve
 
 The compose file mounts the repository in `/app` so outputs are written back to
 your local filesystem.
+
+## Package version
+
+The installed version of the library is exposed as `causal_consistency_nn.__version__`.
+It is read from `pyproject.toml` so it matches the package metadata:
+
+```python
+import causal_consistency_nn
+print(causal_consistency_nn.__version__)
+```
+
