@@ -12,7 +12,11 @@ import torch.nn.functional as F
 
 @dataclass
 class EMConfig:
-    """Configuration for EM training."""
+    """Configuration for EM training.
+
+    ``tau`` controls the softness of the pseudo-label distribution and
+    weights the entropy regularisation in the unsupervised step.
+    """
 
     lambda1: float = 1.0
     lambda2: float = 1.0
@@ -52,12 +56,27 @@ def _unsupervised_step(
     x, z = batch
     y_logits = model.head_y_given_xz(x, z)
     y_probs = F.softmax(y_logits / config.tau, dim=-1)
-    y_pseudo = torch.argmax(y_probs, dim=-1)
-    z_pred = model.head_z_given_xy(x, y_pseudo)
-    x_pred = model.head_x_given_yz(y_pseudo, z)
-    loss_z = mse(z_pred, z)
-    loss_x = mse(x_pred, x)
-    loss = config.beta * (config.lambda1 * loss_z + config.lambda3 * loss_x)
+
+    n_classes = y_probs.shape[1]
+    loss_z = []
+    loss_x = []
+    for cls in range(n_classes):
+        y_cls = torch.full((x.shape[0],), cls, dtype=torch.long, device=x.device)
+        z_pred = model.head_z_given_xy(x, y_cls)
+        x_pred = model.head_x_given_yz(y_cls, z)
+        loss_z.append(F.mse_loss(z_pred, z, reduction="none").mean(dim=1))
+        loss_x.append(F.mse_loss(x_pred, x, reduction="none").mean(dim=1))
+
+    loss_z = torch.stack(loss_z, dim=-1)
+    loss_x = torch.stack(loss_x, dim=-1)
+    exp_loss_z = (loss_z * y_probs).sum(dim=-1).mean()
+    exp_loss_x = (loss_x * y_probs).sum(dim=-1).mean()
+    entropy = -(y_probs * torch.log(y_probs + 1e-8)).sum(dim=-1).mean()
+
+    loss = (
+        config.beta * (config.lambda1 * exp_loss_z + config.lambda3 * exp_loss_x)
+        - config.tau * entropy
+    )
     return loss
 
 
@@ -76,15 +95,31 @@ def train_em(
     ce = nn.CrossEntropyLoss()
 
     for epoch in range(config.epochs):
+        sup_total = 0.0
+        sup_batches = 0
         for batch in supervised_loader:
             optimizer.zero_grad()
             loss = _supervised_step(model, batch, config, mse, ce)
             loss.backward()
             optimizer.step()
+            sup_total += loss.item()
+            sup_batches += 1
 
+        unsup_total = 0.0
+        unsup_batches = 0
         if unsupervised_loader is not None and epoch >= config.pretrain_epochs:
             for batch in unsupervised_loader:
                 optimizer.zero_grad()
                 loss = _unsupervised_step(model, batch, config, mse)
                 loss.backward()
                 optimizer.step()
+                unsup_total += loss.item()
+                unsup_batches += 1
+
+        avg_sup = sup_total / max(1, sup_batches)
+        avg_unsup = unsup_total / max(1, unsup_batches)
+        from causal_consistency_nn.utils.logging import log
+
+        log(
+            f"Epoch {epoch}: supervised_loss={avg_sup:.4f}, unsupervised_loss={avg_unsup:.4f}"
+        )

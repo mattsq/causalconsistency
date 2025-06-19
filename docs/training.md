@@ -39,3 +39,17 @@ convention, e.g. `TRAIN__EPOCHS=20`.
 After each epoch the model state is written to `<run_dir>/model.pt`. Logs are
 printed to stdout and can be captured with any standard tool such as
 `tee` or `wandb` integration if desired.
+
+## Soft-EM option
+
+When labels for `Y` are missing the training loop can perform soft updates.
+Predicted class probabilities are used instead of hard argmaxes and an entropy
+regulariser scaled by `tau` encourages exploration. The unsupervised objective
+is weighted by `beta` and includes the entropy term:
+
+```math
+L_{unsup} = \beta \mathbb{E}_{p(y|x,z)}[L_z + L_x] - \tau H[p(y|x,z)].
+```
+
+Increasing `tau` yields smoother pseudo-labels while decreasing it approaches
+standard EM.
