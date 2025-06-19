@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from torch import nn
 
 from causal_consistency_nn import train
 from causal_consistency_nn.config import Settings
 from causal_consistency_nn.data import get_synth_dataloaders
 from causal_consistency_nn.model.lightning_loop import train_lightning, LightningConfig
+
+pytest.importorskip("pytorch_lightning")
 
 
 def test_lightning_end_to_end(tmp_path: Path) -> None:

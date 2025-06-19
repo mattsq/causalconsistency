@@ -85,6 +85,8 @@ def run_training(settings: Settings, out_dir: Path) -> None:
         )
         train_svi(model, sup_loader, unsup_loader, svi_cfg)
     elif settings.train.use_lightning:
+        if train_lightning is None:
+            raise ImportError("pytorch_lightning is not installed")
         model = ConsistencyModel(x_dim, y_dim, z_dim, settings.model)
         em_cfg = EMConfig(
             lambda1=settings.loss.z_yx,
