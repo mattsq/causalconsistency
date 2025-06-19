@@ -54,6 +54,18 @@ class ZgivenXY(nn.Module):
 
     def forward(self, h: torch.Tensor, y_onehot: torch.Tensor) -> Normal:
         """Return ``p(Z | X,Y)`` as a Normal distribution."""
+        if h.shape[-1] != self.cfg.h_dim:
+            raise ValueError(
+                f"h last dimension {h.shape[-1]} does not match h_dim {self.cfg.h_dim}"
+            )
+        if y_onehot.shape[-1] != self.cfg.y_dim:
+            raise ValueError(
+                f"y_onehot last dimension {y_onehot.shape[-1]} "
+                f"does not match y_dim {self.cfg.y_dim}"
+            )
+        if h.shape[:-1] != y_onehot.shape[:-1]:
+            raise ValueError("Batch dimensions of h and y_onehot must match")
+
         out = self.fc(torch.cat([h, y_onehot], dim=-1))
         mu, log_sigma = out.chunk(2, dim=-1)
         return Normal(mu, log_sigma.exp())
@@ -69,6 +81,17 @@ class YgivenXZ(nn.Module):
 
     def forward(self, h: torch.Tensor, z: torch.Tensor) -> Categorical:
         """Return ``p(Y | X,Z)`` as a Categorical distribution."""
+        if h.shape[-1] != self.cfg.h_dim:
+            raise ValueError(
+                f"h last dimension {h.shape[-1]} does not match h_dim {self.cfg.h_dim}"
+            )
+        if z.shape[-1] != self.cfg.z_dim:
+            raise ValueError(
+                f"z last dimension {z.shape[-1]} does not match z_dim {self.cfg.z_dim}"
+            )
+        if h.shape[:-1] != z.shape[:-1]:
+            raise ValueError("Batch dimensions of h and z must match")
+
         logits = self.fc(torch.cat([h, z], dim=-1))
         return Categorical(logits=logits)
 
@@ -83,6 +106,18 @@ class XgivenYZ(nn.Module):
 
     def forward(self, h: torch.Tensor, y_onehot: torch.Tensor) -> Normal:
         """Return ``p(X | Y,Z)`` as a Normal distribution."""
+        if h.shape[-1] != self.cfg.h_dim:
+            raise ValueError(
+                f"h last dimension {h.shape[-1]} does not match h_dim {self.cfg.h_dim}"
+            )
+        if y_onehot.shape[-1] != self.cfg.y_dim:
+            raise ValueError(
+                f"y_onehot last dimension {y_onehot.shape[-1]} "
+                f"does not match y_dim {self.cfg.y_dim}"
+            )
+        if h.shape[:-1] != y_onehot.shape[:-1]:
+            raise ValueError("Batch dimensions of h and y_onehot must match")
+
         out = self.fc(torch.cat([h, y_onehot], dim=-1))
         mu, log_sigma = out.chunk(2, dim=-1)
         return Normal(mu, log_sigma.exp())
@@ -97,6 +132,10 @@ class WgivenX(nn.Module):
         self.fc = nn.Linear(cfg.h_dim, 2 * cfg.w_dim)
 
     def forward(self, h: torch.Tensor) -> Normal:
+        if h.shape[-1] != self.cfg.h_dim:
+            raise ValueError(
+                f"h last dimension {h.shape[-1]} does not match h_dim {self.cfg.h_dim}"
+            )
         out = self.fc(h)
         mu, log_sigma = out.chunk(2, dim=-1)
         return Normal(mu, log_sigma.exp())
