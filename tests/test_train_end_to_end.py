@@ -45,3 +45,4 @@ def test_train_end_to_end(tmp_path: Path) -> None:
     train.run_training(settings, out_dir)
     assert (out_dir / "model.pt").exists()
     assert (out_dir / "config.yaml").exists()
+    assert (out_dir / "conda-lock.yml").exists()
