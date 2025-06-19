@@ -47,7 +47,6 @@ causal_consistency_nn/
   * Format with `black`.
   * Lint with `ruff`.
 * Unit tests with **pytest** must achieve at least **90 %** coverage. CI should run tests on Python 3.10–3.12 and both CPU and CUDA builds.
-* CI should also publish the package automatically: pushes to `main` go to TestPyPI; tags go to PyPI.
 * Provide Docker images via Dockerfile and docker‑compose with pinned package versions.
 
 ## Model outline
