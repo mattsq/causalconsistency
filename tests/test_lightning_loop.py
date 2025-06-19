@@ -42,17 +42,25 @@ def test_lightning_end_to_end(tmp_path: Path) -> None:
             ).item()
         return total
 
+    ckpt_dir = tmp_path / "ckpt"
     before_params = [p.clone() for p in model.parameters()]
     train_lightning(
         model,
         sup_loader,
         unsup_loader,
-        LightningConfig(epochs=4, lr=0.01),
+        LightningConfig(
+            epochs=4,
+            lr=0.01,
+            checkpoint_dir=ckpt_dir,
+            early_stopping_patience=1,
+        ),
     )
     after_params = list(model.parameters())
 
     changed = any(not torch.allclose(b, a) for b, a in zip(before_params, after_params))
     assert changed
+
+    assert any(ckpt_dir.glob("*.ckpt"))
 
     out_dir = tmp_path / "out"
     train.run_training(settings, out_dir)

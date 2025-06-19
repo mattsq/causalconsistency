@@ -31,6 +31,7 @@ from .model import (
     train_em,
     train_svi,
     train_lightning,
+    LightningConfig,
 )
 
 
@@ -106,7 +107,7 @@ def run_training(settings: Settings, out_dir: Path) -> None:
         if train_lightning is None:
             raise ImportError("pytorch_lightning is not installed")
         model = ConsistencyModel(x_dim, y_dim, z_dim, settings.model)
-        em_cfg = EMConfig(
+        em_cfg = LightningConfig(
             lambda1=settings.loss.z_yx,
             lambda2=settings.loss.y_xz,
             lambda3=settings.loss.x_yz,
