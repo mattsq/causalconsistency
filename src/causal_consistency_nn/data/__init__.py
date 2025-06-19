@@ -1,6 +1,21 @@
 """Data loading utilities."""
 
 from .dummy import load_dummy
-from .synthetic import generate_synthetic, get_synth_dataloaders
+from .synthetic import (
+    generate_synthetic,
+    generate_synthetic_mar,
+    generate_synthetic_mnar,
+    get_synth_dataloaders,
+    get_synth_dataloaders_mar,
+    get_synth_dataloaders_mnar,
+)
 
-__all__ = ["load_dummy", "generate_synthetic", "get_synth_dataloaders"]
+__all__ = [
+    "load_dummy",
+    "generate_synthetic",
+    "generate_synthetic_mar",
+    "generate_synthetic_mnar",
+    "get_synth_dataloaders",
+    "get_synth_dataloaders_mar",
+    "get_synth_dataloaders_mnar",
+]
