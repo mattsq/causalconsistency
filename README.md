@@ -5,7 +5,7 @@ This repository provides an implementation of the causal-consistency neural netw
 ## Quick start
 
 ```bash
-poetry install  # installs torch, pyro, pydantic, pydantic-settings, fastapi and uvicorn
+poetry install  # installs torch, pyro, pydantic, pydantic-settings, PyYAML, fastapi and uvicorn
 poetry run python src/train.py        # plain PyTorch EM loop
 poetry run python src/train.py --use-pyro  # train with Pyro SVI
 ```
@@ -13,7 +13,7 @@ poetry run python src/train.py --use-pyro  # train with Pyro SVI
 If you prefer using `pip` directly, install the dependencies first:
 
 ```bash
-pip install torch pyro-ppl pydantic pydantic-settings fastapi uvicorn
+pip install torch pyro-ppl pydantic pydantic-settings PyYAML fastapi uvicorn
 pip install -e .
 ```
 
