@@ -49,11 +49,11 @@ class LightningConsistencyModule(pl.LightningModule):
             self.log("unsupervised_loss", loss, prog_bar=False, on_epoch=True)
         return loss
 
-    def train_dataloader(self) -> Sequence[Iterable]:
-        loaders: list[Iterable] = [self.supervised_loader]
-        if self.unsupervised_loader is not None:
-            loaders.append(self.unsupervised_loader)
-        return loaders
+    def train_dataloader(self) -> Iterable | Sequence[Iterable]:
+        """Return dataloaders for training."""
+        if self.unsupervised_loader is None or len(self.unsupervised_loader) == 0:
+            return self.supervised_loader
+        return [self.supervised_loader, self.unsupervised_loader]
 
 
 def train_lightning(

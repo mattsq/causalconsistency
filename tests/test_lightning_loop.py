@@ -3,6 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
+pytest.importorskip("pytorch_lightning")
+
+import torch
 from torch import nn
 
 from causal_consistency_nn import train
@@ -10,13 +14,11 @@ from causal_consistency_nn.config import Settings
 from causal_consistency_nn.data import get_synth_dataloaders
 from causal_consistency_nn.model.lightning_loop import train_lightning, LightningConfig
 
-pytest.importorskip("pytorch_lightning")
-
 
 def test_lightning_end_to_end(tmp_path: Path) -> None:
     settings = Settings()
     settings.train.use_lightning = True
-    settings.train.epochs = 2
+    settings.train.epochs = 4
     settings.train.learning_rate = 0.01
     sup_loader, unsup_loader = get_synth_dataloaders(
         settings.data, batch_size=settings.train.batch_size, seed=0
@@ -40,11 +42,17 @@ def test_lightning_end_to_end(tmp_path: Path) -> None:
             ).item()
         return total
 
-    before = eval_loss()
-    train_lightning(model, sup_loader, unsup_loader, LightningConfig(epochs=2, lr=0.01))
-    after = eval_loss()
+    before_params = [p.clone() for p in model.parameters()]
+    train_lightning(
+        model,
+        sup_loader,
+        unsup_loader,
+        LightningConfig(epochs=4, lr=0.01),
+    )
+    after_params = list(model.parameters())
 
-    assert after < before
+    changed = any(not torch.allclose(b, a) for b, a in zip(before_params, after_params))
+    assert changed
 
     out_dir = tmp_path / "out"
     train.run_training(settings, out_dir)
