@@ -42,6 +42,22 @@ pip install -e . pytest pytest-cov
 pytest --cov=src --cov=tests --cov-report=term --cov-fail-under=90
 ```
 
+## Pre-commit hooks
+
+Format and lint code automatically using [pre-commit](https://pre-commit.com/).
+Install the hooks once and they will run `black` and `ruff` on staged files:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+You can run all hooks manually with:
+
+```bash
+pre-commit run --all-files
+```
+
 ## Containerised workflow
 
 The project ships with a `Dockerfile` and `docker-compose.yml` to simplify
