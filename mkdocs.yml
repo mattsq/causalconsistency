@@ -2,6 +2,7 @@ site_name: Causal Consistency NN
 nav:
   - Home: index.md
   - Training: training.md
+  - Pyro SVI Training: pyro_training.md
   - Serving: serving.md
   - Evaluation Metrics: metrics.md
   - Model Card: model_card.md
