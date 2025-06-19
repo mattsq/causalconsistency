@@ -11,7 +11,9 @@ from causal_consistency_nn.data.synthetic import generate_synthetic
 
 
 def test_average_treatment_effect_synth() -> None:
-    cfg = SyntheticDataConfig(n_samples=500, noise_std=0.1, missing_y_prob=0.0)
+    cfg = SyntheticDataConfig(
+        n_samples=500, noise_std=0.1, missing_y_prob=0.0, num_classes=2
+    )
     ds = generate_synthetic(cfg, seed=0)
     x, _, _, _ = ds.tensors
     z_treat = (x + 1).squeeze()

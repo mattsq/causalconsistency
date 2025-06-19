@@ -14,7 +14,7 @@ def generate_synthetic(
     """Generate a synthetic dataset following a simple SCM.
 
     X ~ N(0,1)
-    Y | X ~ Bernoulli(sigmoid(X))
+    Y | X ~ Categorical(logits=j*X) for j in 0..num_classes-1
     Z | X,Y = X + Y + eps,  eps ~ N(0, noise_std)
 
     Missingness in Y is governed by ``cfg.missing_y_prob``.
@@ -24,8 +24,10 @@ def generate_synthetic(
         g.manual_seed(seed)
 
     x = torch.randn(cfg.n_samples, 1, generator=g)
-    probs = torch.sigmoid(x.squeeze())
-    y = torch.bernoulli(probs, generator=g).long()
+    coeffs = torch.arange(cfg.num_classes, dtype=x.dtype, device=x.device)
+    logits = x.squeeze(-1)[:, None] * coeffs
+    probs = torch.softmax(logits, dim=-1)
+    y = torch.multinomial(probs, num_samples=1, generator=g).squeeze(-1)
     noise = torch.randn(cfg.n_samples, 1, generator=g) * cfg.noise_std
     z = x + y.float().unsqueeze(-1) + noise
 
