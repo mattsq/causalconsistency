@@ -16,6 +16,7 @@ class ModelConfig:
 
     hidden_dim: int = 64
     num_layers: int = 2
+    w_dim: int = 1
 
 
 @dataclass
@@ -25,6 +26,7 @@ class LossWeights:
     z_yx: float = 1.0
     y_xz: float = 1.0
     x_yz: float = 1.0
+    w_x: float = 1.0
     unsup: float = 0.0
 
 
@@ -47,6 +49,9 @@ class SyntheticDataConfig:
     noise_std: float = 0.1
     missing_y_prob: float = 0.0
     num_classes: int = 2
+    w_dim: int = 1
+    w_y_strength: float = 1.0
+    instrumental: bool = False
 
 
 class Settings(BaseSettings):

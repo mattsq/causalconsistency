@@ -18,6 +18,7 @@ class EMConfig:
     weights the entropy regularisation in the unsupervised step.
     """
 
+    lambda_w: float = 1.0
     lambda1: float = 1.0
     lambda2: float = 1.0
     lambda3: float = 1.0
@@ -30,12 +31,17 @@ class EMConfig:
 
 def _supervised_step(
     model: nn.Module,
-    batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+    batch: Tuple[torch.Tensor, ...],
     config: EMConfig,
     mse: nn.Module,
     ce: nn.Module,
 ) -> torch.Tensor:
-    x, y, z = batch
+    if len(batch) == 4:
+        w, x, y, z = batch
+        loss_w = mse(model.head_w_given_x(x), w)
+    else:
+        x, y, z = batch
+        loss_w = torch.tensor(0.0, device=x.device)
     z_pred = model.head_z_given_xy(x, y)
     y_logits = model.head_y_given_xz(x, z)
     x_pred = model.head_x_given_yz(y, z)
@@ -43,17 +49,27 @@ def _supervised_step(
     loss_z = mse(z_pred, z)
     loss_y = ce(y_logits, y)
     loss_x = mse(x_pred, x)
-    loss = config.lambda1 * loss_z + config.lambda2 * loss_y + config.lambda3 * loss_x
+    loss = (
+        config.lambda_w * loss_w
+        + config.lambda1 * loss_z
+        + config.lambda2 * loss_y
+        + config.lambda3 * loss_x
+    )
     return loss
 
 
 def _unsupervised_step(
     model: nn.Module,
-    batch: Tuple[torch.Tensor, torch.Tensor],
+    batch: Tuple[torch.Tensor, ...],
     config: EMConfig,
     mse: nn.Module,
 ) -> torch.Tensor:
-    x, z = batch
+    if len(batch) == 3:
+        w, x, z = batch
+        loss_w = mse(model.head_w_given_x(x), w)
+    else:
+        x, z = batch
+        loss_w = torch.tensor(0.0, device=x.device)
     y_logits = model.head_y_given_xz(x, z)
     y_probs = F.softmax(y_logits / config.tau, dim=-1)
 
@@ -74,7 +90,12 @@ def _unsupervised_step(
     entropy = -(y_probs * torch.log(y_probs + 1e-8)).sum(dim=-1).mean()
 
     loss = (
-        config.beta * (config.lambda1 * exp_loss_z + config.lambda3 * exp_loss_x)
+        config.beta
+        * (
+            config.lambda1 * exp_loss_z
+            + config.lambda3 * exp_loss_x
+            + config.lambda_w * loss_w
+        )
         - config.tau * entropy
     )
     return loss
@@ -82,8 +103,8 @@ def _unsupervised_step(
 
 def train_em(
     model: nn.Module,
-    supervised_loader: Iterable[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
-    unsupervised_loader: Optional[Iterable[Tuple[torch.Tensor, torch.Tensor]]],
+    supervised_loader: Iterable[Tuple[torch.Tensor, ...]],
+    unsupervised_loader: Optional[Iterable[Tuple[torch.Tensor, ...]]],
     config: Optional[EMConfig] = None,
 ) -> None:
     """Train ``model`` using a simple EM loop."""

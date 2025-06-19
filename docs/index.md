@@ -22,13 +22,16 @@ The network is composed of a shared `Backbone` and three heads:
 - `ZgivenXY` predicts post-treatment variables `Z` from `X` and `Y`.
 - `YgivenXZ` estimates missing treatments from `X` and `Z`.
 - `XgivenYZ` reconstructs `X` given `Y` and `Z`.
+- `WgivenX` models instruments `W` conditional on `X`.
 
 These modules can be swapped or extended through the configuration system.
 
 ## Data generation
 Synthetic datasets following the $X \to Y \to Z$ structure can be generated with
-`examples/scripts/generate_synth.py`. The script outputs a small CSV file that is
-used throughout the examples and tests.
+`examples/scripts/generate_synth.py`. An alternative generator with an
+instrumental variable `W → Y` is also provided and activated via the
+`instrumental` flag in the data configuration. Both are used throughout the
+examples and tests.
 
 ## Training workflow
 `train.py` launches a semi-supervised training loop that mixes supervised losses

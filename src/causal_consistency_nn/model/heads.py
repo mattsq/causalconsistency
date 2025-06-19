@@ -36,6 +36,14 @@ class XgivenYZConfig:
     x_dim: int
 
 
+@dataclass
+class WgivenXConfig:
+    """Configuration for :class:`WgivenX`."""
+
+    h_dim: int
+    w_dim: int
+
+
 class ZgivenXY(nn.Module):
     """Distribution of ``Z`` given ``X`` and ``Y``."""
 
@@ -80,11 +88,27 @@ class XgivenYZ(nn.Module):
         return Normal(mu, log_sigma.exp())
 
 
+class WgivenX(nn.Module):
+    """Distribution of ``W`` given ``X``."""
+
+    def __init__(self, cfg: WgivenXConfig) -> None:  # noqa: D401
+        super().__init__()
+        self.cfg = cfg
+        self.fc = nn.Linear(cfg.h_dim, 2 * cfg.w_dim)
+
+    def forward(self, h: torch.Tensor) -> Normal:
+        out = self.fc(h)
+        mu, log_sigma = out.chunk(2, dim=-1)
+        return Normal(mu, log_sigma.exp())
+
+
 __all__ = [
     "ZgivenXY",
     "YgivenXZ",
     "XgivenYZ",
+    "WgivenX",
     "ZgivenXYConfig",
     "YgivenXZConfig",
     "XgivenYZConfig",
+    "WgivenXConfig",
 ]

@@ -27,12 +27,16 @@ def log_likelihood_normal(mu: Tensor, sigma: Tensor, target: Tensor) -> Tensor:
 
 def dataset_log_likelihood(
     model: torch.nn.Module,
-    loader: Iterable[tuple[Tensor, Tensor, Tensor]],
+    loader: Iterable[tuple[Tensor, ...]],
 ) -> float:
     """Average log likelihood of ``Z`` given ``X`` and ``Y`` for a dataset."""
     total = 0.0
     count = 0
-    for x, y, z in loader:
+    for batch in loader:
+        if len(batch) == 4:
+            _, x, y, z = batch
+        else:
+            x, y, z = batch
         h = model.backbone(x)
         y_oh = F.one_hot(y, num_classes=model.y_dim).float()
         dist = model.head_z(h, y_oh)

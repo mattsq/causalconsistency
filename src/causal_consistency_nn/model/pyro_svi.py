@@ -20,12 +20,20 @@ class SVIConfig(EMConfig):
 
 def _model_supervised(
     model: nn.Module,
-    batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+    batch: Tuple[torch.Tensor, ...],
     cfg: SVIConfig,
 ) -> None:
-    x, y, z = batch
+    if len(batch) == 4:
+        w, x, y, z = batch
+        w_dist = model.head_w(model.backbone(x))
+    else:
+        x, y, z = batch
+        w = None
     with pyro.plate("batch", x.shape[0]):
         h = model.backbone(x)
+        if w is not None:
+            with pyro.poutine.scale(scale=cfg.lambda_w):
+                pyro.sample("w", w_dist.to_event(1), obs=w)
         z_dist = model.head_z(h, model._onehot(y))
         with pyro.poutine.scale(scale=cfg.lambda1):
             pyro.sample("z", z_dist.to_event(1), obs=z)
@@ -38,11 +46,22 @@ def _model_supervised(
 
 
 def _model_unsupervised(
-    model: nn.Module, batch: Tuple[torch.Tensor, torch.Tensor], cfg: SVIConfig
+    model: nn.Module,
+    batch: Tuple[torch.Tensor, ...],
+    cfg: SVIConfig,
 ) -> None:
-    x, z = batch
+    if len(batch) == 3:
+        w, x, z = batch
+        loss_w_scale = cfg.lambda_w * cfg.beta
+    else:
+        x, z = batch
+        w = None
+        loss_w_scale = 0.0
     with pyro.plate("batch", x.shape[0]):
         h = model.backbone(x)
+        if w is not None:
+            with pyro.poutine.scale(scale=loss_w_scale):
+                pyro.sample("w", model.head_w(h).to_event(1), obs=w)
         with pyro.poutine.scale(scale=0.0):
             y = pyro.sample("y", model.head_y(h, z))
         z_dist = model.head_z(h, model._onehot(y))
@@ -54,9 +73,14 @@ def _model_unsupervised(
 
 
 def _guide_unsupervised(
-    model: nn.Module, batch: Tuple[torch.Tensor, torch.Tensor], cfg: SVIConfig
+    model: nn.Module,
+    batch: Tuple[torch.Tensor, ...],
+    cfg: SVIConfig,
 ) -> None:
-    x, z = batch
+    if len(batch) == 3:
+        _w, x, z = batch
+    else:
+        x, z = batch
     with pyro.plate("batch", x.shape[0]):
         h = model.backbone(x)
         pyro.sample("y", model.head_y(h, z))
@@ -64,8 +88,8 @@ def _guide_unsupervised(
 
 def train_svi(
     model: nn.Module,
-    supervised_loader: Iterable[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
-    unsupervised_loader: Optional[Iterable[Tuple[torch.Tensor, torch.Tensor]]],
+    supervised_loader: Iterable[Tuple[torch.Tensor, ...]],
+    unsupervised_loader: Optional[Iterable[Tuple[torch.Tensor, ...]]],
     config: Optional[SVIConfig] = None,
 ) -> None:
     """Train ``model`` using Pyro SVI."""
