@@ -10,20 +10,27 @@ The simplest way to start training on the synthetic data generator is:
 python src/causal_consistency_nn/train.py --config examples/scripts/train_config.yaml
 ```
 
-To train using Pyro's stochastic variational inference instead of the plain
-PyTorch loop add the `--use-pyro` flag:
+### Training backends
+
+`train.py` supports three alternative training loops selectable via CLI flags:
+
+1. **Plain PyTorch EM** – default behaviour when no flag is given.
+2. **Pyro SVI** – pass `--use-pyro` to run stochastic variational inference with Pyro's `SVI`.
+3. **PyTorch Lightning** – pass `--use-lightning` to leverage Lightning's `Trainer` for checkpointing and early stopping.
+
+For example, to train using Pyro:
 
 ```bash
 python src/causal_consistency_nn/train.py --config examples/scripts/train_config.yaml --use-pyro
 ```
 
-To run the same experiment with PyTorch Lightning instead use `--use-lightning`:
+Or to train with PyTorch Lightning:
 
 ```bash
 python src/causal_consistency_nn/train.py --config examples/scripts/train_config.yaml --use-lightning
 ```
 
-This requires installing `pytorch-lightning` first:
+Lightning training requires the optional `pytorch-lightning` package:
 
 ```bash
 pip install pytorch-lightning
