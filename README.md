@@ -17,6 +17,19 @@ pip install torch pyro-ppl pydantic pydantic-settings fastapi uvicorn
 pip install -e .
 ```
 
+### Reproducing the environment
+
+The repository provides a fully pinned `conda-lock.yml`. Create the environment
+with micromamba or conda:
+
+```bash
+micromamba create -n cc --file conda-lock.yml
+# or: conda env create -f conda-lock.yml
+micromamba activate cc
+```
+
+You can then run training or the tests inside this environment.
+
 The model enforces the factorisation $X \to Y \to Z$ by sharing a backbone encoder and three output heads. See the documentation in `docs/` for details.
 For an overview of the causal assumptions, fairness considerations and robustness tests see the [model card](docs/model_card.md).
 
