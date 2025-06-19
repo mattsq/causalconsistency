@@ -6,11 +6,14 @@ from .heads import (
     XgivenYZConfig,
     YgivenXZ,
     YgivenXZConfig,
+    WgivenX,
+    WgivenXConfig,
     ZgivenXY,
     ZgivenXYConfig,
 )
 from .semi_loop import EMConfig, train_em
 from .pyro_model import PyroConsistencyModel
+from .pyro_wgivenx import PyroWgivenX
 from .pyro_svi import SVIConfig, train_svi
 
 __all__ = [
@@ -22,9 +25,12 @@ __all__ = [
     "YgivenXZConfig",
     "XgivenYZ",
     "XgivenYZConfig",
+    "WgivenX",
+    "WgivenXConfig",
     "EMConfig",
     "train_em",
     "PyroConsistencyModel",
+    "PyroWgivenX",
     "SVIConfig",
     "train_svi",
 ]

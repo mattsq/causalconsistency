@@ -5,10 +5,16 @@ import torch
 import torch.nn.functional as F
 
 from .backbone import Backbone, BackboneConfig
-from .heads import ZgivenXYConfig, YgivenXZConfig, XgivenYZConfig
+from .heads import (
+    ZgivenXYConfig,
+    YgivenXZConfig,
+    XgivenYZConfig,
+    WgivenXConfig,
+)
 from .pyro_zgivenxy import PyroZgivenXY
 from .pyro_ygivenxz import PyroYgivenXZ
 from .pyro_xgivenyz import PyroXgivenYZ
+from .pyro_wgivenx import PyroWgivenX
 from ..config import ModelConfig
 
 
@@ -31,6 +37,7 @@ class PyroConsistencyModel(PyroModule):
         self.head_x = PyroXgivenYZ(
             XgivenYZConfig(h_dim=h_dim, y_dim=y_dim, x_dim=x_dim)
         )
+        self.head_w = PyroWgivenX(WgivenXConfig(h_dim=h_dim, w_dim=cfg.w_dim))
         self.y_dim = y_dim
 
     def _onehot(self, y: torch.Tensor) -> torch.Tensor:
@@ -47,6 +54,10 @@ class PyroConsistencyModel(PyroModule):
     def head_x_given_yz(self, y: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
         h = self.backbone(z)
         return self.head_x(h, self._onehot(y)).mean
+
+    def head_w_given_x(self, x: torch.Tensor) -> torch.Tensor:
+        h = self.backbone(x)
+        return self.head_w(h).mean
 
 
 __all__ = ["PyroConsistencyModel"]

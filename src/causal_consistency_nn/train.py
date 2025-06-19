@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from .config import ModelConfig, Settings
-from .data import get_synth_dataloaders
+from .data import get_synth_dataloaders, get_instrumental_dataloaders
 from .model import (
     Backbone,
     BackboneConfig,
@@ -24,6 +24,8 @@ from .model import (
     XgivenYZConfig,
     YgivenXZ,
     YgivenXZConfig,
+    WgivenX,
+    WgivenXConfig,
     ZgivenXY,
     ZgivenXYConfig,
     train_em,
@@ -42,6 +44,7 @@ class ConsistencyModel(nn.Module):
         self.head_z = ZgivenXY(ZgivenXYConfig(h_dim=h_dim, y_dim=y_dim, z_dim=z_dim))
         self.head_y = YgivenXZ(YgivenXZConfig(h_dim=h_dim, z_dim=z_dim, y_dim=y_dim))
         self.head_x = XgivenYZ(XgivenYZConfig(h_dim=h_dim, y_dim=y_dim, x_dim=x_dim))
+        self.head_w = WgivenX(WgivenXConfig(h_dim=h_dim, w_dim=cfg.w_dim))
         self.y_dim = y_dim
 
     def _onehot(self, y: torch.Tensor) -> torch.Tensor:
@@ -59,15 +62,29 @@ class ConsistencyModel(nn.Module):
         h = self.backbone(z)
         return self.head_x(h, self._onehot(y)).mean
 
+    def head_w_given_x(self, x: torch.Tensor) -> torch.Tensor:
+        h = self.backbone(x)
+        return self.head_w(h).mean
+
 
 def run_training(settings: Settings, out_dir: Path) -> None:
     """Train a model using the provided ``settings`` and save outputs."""
 
-    sup_loader, unsup_loader = get_synth_dataloaders(
-        settings.data, batch_size=settings.train.batch_size, seed=0
-    )
+    if settings.data.instrumental:
+        sup_loader, unsup_loader = get_instrumental_dataloaders(
+            settings.data, batch_size=settings.train.batch_size, seed=0
+        )
+    else:
+        sup_loader, unsup_loader = get_synth_dataloaders(
+            settings.data, batch_size=settings.train.batch_size, seed=0
+        )
 
-    x_example, y_example, z_example = next(iter(sup_loader))
+    example = next(iter(sup_loader))
+    if settings.data.instrumental:
+        w_example, x_example, y_example, z_example = example
+        settings.model.w_dim = w_example.shape[1]
+    else:
+        x_example, y_example, z_example = example
     x_dim = x_example.shape[1]
     y_dim = int(y_example.max().item()) + 1
     z_dim = z_example.shape[1]
@@ -75,6 +92,7 @@ def run_training(settings: Settings, out_dir: Path) -> None:
     if settings.train.use_pyro:
         model = PyroConsistencyModel(x_dim, y_dim, z_dim, settings.model)
         svi_cfg = SVIConfig(
+            lambda_w=settings.loss.w_x,
             lambda1=settings.loss.z_yx,
             lambda2=settings.loss.y_xz,
             lambda3=settings.loss.x_yz,
@@ -86,6 +104,7 @@ def run_training(settings: Settings, out_dir: Path) -> None:
     else:
         model = ConsistencyModel(x_dim, y_dim, z_dim, settings.model)
         em_cfg = EMConfig(
+            lambda_w=settings.loss.w_x,
             lambda1=settings.loss.z_yx,
             lambda2=settings.loss.y_xz,
             lambda3=settings.loss.x_yz,

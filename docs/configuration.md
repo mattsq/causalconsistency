@@ -14,10 +14,12 @@ Below is a minimal configuration file illustrating the available sections:
 model:
   hidden_dim: 64
   num_layers: 2
+  w_dim: 1
 loss:
   z_yx: 1.0
   y_xz: 1.0
   x_yz: 1.0
+  w_x: 1.0
   unsup: 0.0
 train:
   batch_size: 32
@@ -27,6 +29,9 @@ data:
   n_samples: 1000
   noise_std: 0.1
   missing_y_prob: 0.0
+  instrumental: false
+  w_dim: 1
+  w_y_strength: 1.0
 ```
 
 To override a single value without editing the file you can pass something like

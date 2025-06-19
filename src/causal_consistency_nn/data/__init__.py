@@ -9,6 +9,7 @@ from .synthetic import (
     get_synth_dataloaders_mar,
     get_synth_dataloaders_mnar,
 )
+from .instrumental import generate_instrumental, get_instrumental_dataloaders
 
 __all__ = [
     "load_dummy",
@@ -18,4 +19,6 @@ __all__ = [
     "get_synth_dataloaders",
     "get_synth_dataloaders_mar",
     "get_synth_dataloaders_mnar",
+    "generate_instrumental",
+    "get_instrumental_dataloaders",
 ]

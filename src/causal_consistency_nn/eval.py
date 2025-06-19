@@ -9,17 +9,23 @@ import yaml
 import torch
 
 from .config import Settings
-from .data import get_synth_dataloaders
+from .data import get_synth_dataloaders, get_instrumental_dataloaders
 from .train import ConsistencyModel
 from .metrics import dataset_log_likelihood
 
 
 def load_model(model_path: Path, settings: Settings) -> ConsistencyModel:
     """Load ``ConsistencyModel`` from ``model_path``."""
-    sup_loader, _ = get_synth_dataloaders(
-        settings.data, batch_size=settings.train.batch_size, seed=0
-    )
-    x_ex, y_ex, z_ex = next(iter(sup_loader))
+    if settings.data.instrumental:
+        sup_loader, _ = get_instrumental_dataloaders(
+            settings.data, batch_size=settings.train.batch_size, seed=0
+        )
+        _, x_ex, y_ex, z_ex = next(iter(sup_loader))
+    else:
+        sup_loader, _ = get_synth_dataloaders(
+            settings.data, batch_size=settings.train.batch_size, seed=0
+        )
+        x_ex, y_ex, z_ex = next(iter(sup_loader))
     model = ConsistencyModel(
         x_ex.shape[1], int(y_ex.max().item()) + 1, z_ex.shape[1], settings.model
     )
@@ -53,9 +59,14 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     settings = Settings.from_yaml(args.config)
-    sup_loader, _ = get_synth_dataloaders(
-        settings.data, batch_size=settings.train.batch_size, seed=0
-    )
+    if settings.data.instrumental:
+        sup_loader, _ = get_instrumental_dataloaders(
+            settings.data, batch_size=settings.train.batch_size, seed=0
+        )
+    else:
+        sup_loader, _ = get_synth_dataloaders(
+            settings.data, batch_size=settings.train.batch_size, seed=0
+        )
     model = load_model(args.model_path, settings)
     metrics = evaluate(model, sup_loader)
     print(yaml.safe_dump(metrics))

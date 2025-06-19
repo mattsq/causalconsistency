@@ -1,5 +1,8 @@
 # Example configuration for training on synthetic data
 model:
   hidden_dim: 32
+  w_dim: 1
 train:
   epochs: 10
+data:
+  instrumental: false

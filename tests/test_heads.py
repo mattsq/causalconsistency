@@ -6,6 +6,8 @@ from causal_consistency_nn.model.heads import (
     XgivenYZConfig,
     YgivenXZ,
     YgivenXZConfig,
+    WgivenX,
+    WgivenXConfig,
     ZgivenXY,
     ZgivenXYConfig,
 )
@@ -30,6 +32,7 @@ def test_heads_shapes_and_gradients() -> None:
     z_head = ZgivenXY(ZgivenXYConfig(h_dim=h_dim, y_dim=y_dim, z_dim=z_dim))
     y_head = YgivenXZ(YgivenXZConfig(h_dim=h_dim, z_dim=z_dim, y_dim=y_dim))
     x_head = XgivenYZ(XgivenYZConfig(h_dim=h_dim, y_dim=y_dim, x_dim=x_dim))
+    w_head = WgivenX(WgivenXConfig(h_dim=h_dim, w_dim=2))
 
     dist_z = z_head(h, y_oh)
     assert dist_z.mean.shape == (batch, z_dim)
@@ -38,12 +41,15 @@ def test_heads_shapes_and_gradients() -> None:
     assert dist_y.logits.shape == (batch, y_dim)
 
     dist_x = x_head(h, y_oh)
+    dist_w = w_head(h)
     assert dist_x.mean.shape == (batch, x_dim)
+    assert dist_w.mean.shape == (batch, 2)
 
     loss = (
         dist_z.log_prob(z).sum()
         + dist_y.log_prob(y).sum()
         + dist_x.log_prob(torch.randn(batch, x_dim)).sum()
+        + dist_w.log_prob(torch.randn(batch, 2)).sum()
     )
     loss.backward()
 
@@ -51,6 +57,7 @@ def test_heads_shapes_and_gradients() -> None:
         list(z_head.parameters())
         + list(y_head.parameters())
         + list(x_head.parameters())
+        + list(w_head.parameters())
     ):
         assert param.grad is not None
         assert torch.isfinite(param.grad).all()
