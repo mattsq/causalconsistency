@@ -1,7 +1,7 @@
 # Example configuration for multi-class synthetic data
 model:
   hidden_dim: 32
-training:
+train:
   epochs: 10
 data:
   num_classes: 3
