@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 from pathlib import Path
 
 import yaml
@@ -98,6 +99,12 @@ def run_training(settings: Settings, out_dir: Path) -> None:
     torch.save(model.state_dict(), out_dir / "model.pt")
     with (out_dir / "config.yaml").open("w") as handle:
         yaml.safe_dump(settings.model_dump(), handle)
+
+    # Copy environment lockfile for reproducibility
+    repo_root = Path(__file__).resolve().parents[2]
+    lockfile = repo_root / "conda-lock.yml"
+    if lockfile.exists():
+        shutil.copy(lockfile, out_dir / "conda-lock.yml")
 
 
 def main(argv: list[str] | None = None) -> None:
