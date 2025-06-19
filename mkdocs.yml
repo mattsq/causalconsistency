@@ -3,6 +3,7 @@ nav:
   - Home: index.md
   - Training: training.md
   - Evaluation Metrics: metrics.md
+  - Model Card: model_card.md
   - Configuration: configuration.md
   - API Reference: api.md
 plugins:
